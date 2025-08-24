@@ -330,5 +330,32 @@
 
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module">
+      // Firebase SDK import
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      // Firestore를 사용하기 위해 getFirestore를 임포트합니다.
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyDtZCbjGHbU6ZrUWd_b2Du6zuYADWuHO9k",
+        authDomain: "job-platform-8f2a5.firebaseapp.com",
+        projectId: "job-platform-8f2a5",
+        storageBucket: "job-platform-8f2a5.appspot.com",
+        messagingSenderId: "826750887139",
+        appId: "1:826750887139:web:faf06c37d74023ee3d11d6",
+        measurementId: "G-E5Z9MC4ZZJ"
+      };
+
+      // Firebase 앱 초기화
+      const app = initializeApp(firebaseConfig);
+      // Firestore 데이터베이스 초기화
+      const db = getFirestore(app);
+
+      // main.js 파일에서 db 객체를 사용하기 위해 전역 window 객체에 할당합니다.
+      window.db = db;
+    </script>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
