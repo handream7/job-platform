@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>실시간 구인구직 플랫폼</title>
+    <title>실시간 구인구직 플랫폼 (Firebase 연동)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Socket.IO 클라이언트 라이브러리 추가 -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
@@ -49,7 +48,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- 로그인 뷰 -->
     <div id="login-view" class="fullscreen-view">
         <div class="text-center bg-white p-12 rounded-xl shadow-2xl w-full max-w-sm">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">테스트 로그인</h1>
@@ -76,11 +74,9 @@
         </div>
     </div>
 
-    <!-- 프로필 설정 뷰 -->
     <div id="profile-setup-view" class="fullscreen-view hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-6 text-center">프로필 정보 입력</h2>
-            <!-- 매장 프로필 폼 -->
             <form id="store-profile-form" class="hidden space-y-4">
                 <div>
                     <label for="store-name" class="block text-sm font-medium text-gray-700">매장 이름</label>
@@ -100,7 +96,6 @@
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 btn">저장하고 시작하기</button>
             </form>
-            <!-- 딜러 프로필 폼 -->
             <form id="dealer-profile-form" class="hidden space-y-4">
                  <div>
                     <label for="dealer-name" class="block text-sm font-medium text-gray-700">이름</label>
@@ -157,7 +152,6 @@
         </div>
     </div>
 
-    <!-- 메인 앱 컨테이너 -->
     <div id="app-container" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
         <header class="text-center mb-8 relative">
             <h1 class="text-4xl font-bold text-gray-900">실시간 구인구직 플랫폼</h1>
@@ -168,7 +162,6 @@
         
         <div id="store-view" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- 구인 공고 등록 (업데이트된 양식) -->
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold mb-4 border-b pb-2">새 구인 공고 등록</h2>
                     <form id="create-job-form" class="space-y-4">
@@ -183,8 +176,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700">시간 및 인원 (24시간 기준)</label>
                             <div id="time-slots-container" class="space-y-2 mt-1">
-                                <!-- 시간/인원 입력 필드가 동적으로 추가됩니다 -->
-                            </div>
+                                </div>
                             <button type="button" id="add-time-slot-btn" class="mt-2 w-full flex justify-center items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
                                 다른 시간대 추가
@@ -292,7 +284,6 @@
         </div>
     </div>
 
-    <!-- 프로필 조회/수정 모달 -->
     <div id="profile-modal-view" class="modal-backdrop hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
             <button id="close-profile-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
@@ -301,21 +292,18 @@
         </div>
     </div>
     
-    <!-- 리뷰 작성 모달 -->
     <div id="review-modal-view" class="modal-backdrop hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
              <button id="close-review-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
              <h2 id="review-modal-title" class="text-2xl font-bold mb-6 text-center">리뷰 작성</h2>
              <form id="review-form">
                 <div id="review-form-content" class="space-y-4">
-                    <!-- 리뷰 폼 내용이 동적으로 채워집니다 -->
-                </div>
+                    </div>
                 <button type="submit" class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 btn">제출하기</button>
              </form>
         </div>
     </div>
 
-    <!-- 취소 사유 모달 -->
     <div id="cancel-modal-view" class="modal-backdrop hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
              <button id="close-cancel-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
@@ -328,13 +316,15 @@
         </div>
     </div>
 
-
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script type="module">
       // Firebase SDK import
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      // Firestore를 사용하기 위해 getFirestore를 임포트합니다.
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      // Firestore를 사용하기 위해 필요한 모든 함수를 임포트합니다.
+      import { 
+        getFirestore, doc, setDoc, getDoc, 
+        collection, addDoc, onSnapshot, updateDoc,
+        arrayUnion, Timestamp
+      } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
       // Your web app's Firebase configuration
       const firebaseConfig = {
@@ -349,13 +339,20 @@
 
       // Firebase 앱 초기화
       const app = initializeApp(firebaseConfig);
-      // Firestore 데이터베이스 초기화
-      const db = getFirestore(app);
-
-      // main.js 파일에서 db 객체를 사용하기 위해 전역 window 객체에 할당합니다.
-      window.db = db;
+      
+      // main.js 파일에서 Firestore 관련 기능을 모두 사용하기 위해 window 객체에 할당합니다.
+      window.db = getFirestore(app);
+      window.doc = doc;
+      window.setDoc = setDoc;
+      window.getDoc = getDoc;
+      window.collection = collection;
+      window.addDoc = addDoc;
+      window.onSnapshot = onSnapshot;
+      window.updateDoc = updateDoc;
+      window.arrayUnion = arrayUnion;
+      window.Timestamp = Timestamp;
     </script>
-
+    
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
