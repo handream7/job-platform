@@ -1,6 +1,7 @@
 # 필요한 라이브러리들을 가져옵니다.
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
+from flask_cors import CORS  # <-- 1. 이 라인을 추가하세요.
 import uuid
 from datetime import datetime
 
@@ -8,8 +9,11 @@ from datetime import datetime
 app = Flask(__name__)
 # 보안을 위해 실제 운영 환경에서는 시크릿 키를 안전하게 관리해야 합니다.
 app.config['SECRET_KEY'] = 'your-very-secret-key' 
-# SocketIO를 Flask 앱에 연결합니다.
-socketio = SocketIO(app)
+
+# SocketIO를 Flask 앱에 연결합니다. (아래와 같이 수정)
+# 2. CORS(app) 와 cors_allowed_origins="*" 를 추가하세요.
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # 데이터를 메모리에 저장하기 위한 변수입니다. 
 # 실제 서비스에서는 데이터베이스(예: PostgreSQL, MySQL, MongoDB)를 사용해야 합니다.
