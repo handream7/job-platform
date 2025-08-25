@@ -14,34 +14,10 @@
         .status-open { background-color: #10B981; color: white; }
         .status-closed { background-color: #6B7280; color: white; }
         .btn { transition: background-color 0.2s ease-in-out; }
-        .fullscreen-view {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-        }
-        /* Firefox에서 number input의 화살표 제거 */
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
-        /* Chrome, Safari, Edge, Opera에서 number input의 화살표 제거 */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        .fullscreen-view { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 50; }
+        input[type=number] { -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .toggle-arrow { transition: transform 0.3s; }
         .collapsed .toggle-arrow { transform: rotate(-90deg); }
     </style>
@@ -67,9 +43,7 @@
                     <option value="test9">test9 (딜러)</option>
                     <option value="test10">test10 (딜러)</option>
                 </select>
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors btn">
-                    로그인
-                </button>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors btn">로그인</button>
             </form>
         </div>
     </div>
@@ -78,75 +52,26 @@
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-6 text-center">프로필 정보 입력</h2>
             <form id="store-profile-form" class="hidden space-y-4">
-                <div>
-                    <label for="store-name" class="block text-sm font-medium text-gray-700">매장 이름</label>
-                    <input type="text" id="store-name" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="store-address" class="block text-sm font-medium text-gray-700">매장 주소</label>
-                    <input type="text" id="store-address" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="store-phone" class="block text-sm font-medium text-gray-700">매장 전화번호</label>
-                    <input type="tel" id="store-phone" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                 <div>
-                    <label for="store-email" class="block text-sm font-medium text-gray-700">이메일</label>
-                    <input type="email" id="store-email" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
+                <div><label for="store-name" class="block text-sm font-medium text-gray-700">매장 이름</label><input type="text" id="store-name" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
+                <div><label for="store-address" class="block text-sm font-medium text-gray-700">매장 주소</label><input type="text" id="store-address" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
+                <div><label for="store-phone" class="block text-sm font-medium text-gray-700">매장 전화번호</label><input type="tel" id="store-phone" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
+                <div><label for="store-email" class="block text-sm font-medium text-gray-700">이메일</label><input type="email" id="store-email" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 btn">저장하고 시작하기</button>
             </form>
             <form id="dealer-profile-form" class="hidden space-y-4">
-                 <div>
-                    <label for="dealer-name" class="block text-sm font-medium text-gray-700">이름</label>
-                    <input type="text" id="dealer-name" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                <div><label for="dealer-name" class="block text-sm font-medium text-gray-700">이름</label><input type="text" id="dealer-name" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label for="dealer-gender" class="block text-sm font-medium text-gray-700">성별</label><select id="dealer-gender" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="남">남</option><option value="여">여</option></select></div>
+                    <div><label for="dealer-age" class="block text-sm font-medium text-gray-700">나이</label><input type="number" id="dealer-age" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="dealer-gender" class="block text-sm font-medium text-gray-700">성별</label>
-                        <select id="dealer-gender" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                            <option value="남">남</option>
-                            <option value="여">여</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="dealer-age" class="block text-sm font-medium text-gray-700">나이</label>
-                        <input type="number" id="dealer-age" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
+                    <div><label for="dealer-residence" class="block text-sm font-medium text-gray-700">거주 지역</label><select id="dealer-residence" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"></select></div>
+                    <div><label for="dealer-preference" class="block text-sm font-medium text-gray-700">선호 지역</label><select id="dealer-preference" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"></select></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="dealer-residence" class="block text-sm font-medium text-gray-700">거주 지역</label>
-                        <select id="dealer-residence" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"></select>
-                    </div>
-                    <div>
-                        <label for="dealer-preference" class="block text-sm font-medium text-gray-700">선호 지역</label>
-                        <select id="dealer-preference" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"></select>
-                    </div>
-                </div>
-                <div>
-                    <label for="dealer-experience-select" class="block text-sm font-medium text-gray-700">경력</label>
-                    <select id="dealer-experience-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                        <option value="6개월">6개월</option>
-                        <option value="1년">1년</option>
-                        <option value="1년반">1년반</option>
-                        <option value="2년">2년</option>
-                        <option value="2년반">2년반</option>
-                        <option value="3년 이상">3년 이상</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="dealer-experience-detail" class="block text-sm font-medium text-gray-700">구체 경력</label>
-                    <textarea id="dealer-experience-detail" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="예) 강남 OO점 (1년), 홍대 XX점 (6개월)"></textarea>
-                </div>
-                <div>
-                    <label for="dealer-phone" class="block text-sm font-medium text-gray-700">전화번호</label>
-                    <input type="tel" id="dealer-phone" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="dealer-email" class="block text-sm font-medium text-gray-700">이메일</label>
-                    <input type="email" id="dealer-email" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                </div>
+                <div><label for="dealer-experience-select" class="block text-sm font-medium text-gray-700">경력</label><select id="dealer-experience-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="6개월">6개월</option><option value="1년">1년</option><option value="1년반">1년반</option><option value="2년">2년</option><option value="2년반">2년반</option><option value="3년 이상">3년 이상</option></select></div>
+                <div><label for="dealer-experience-detail" class="block text-sm font-medium text-gray-700">구체 경력</label><textarea id="dealer-experience-detail" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="예) 강남 OO점 (1년), 홍대 XX점 (6개월)"></textarea></div>
+                <div><label for="dealer-phone" class="block text-sm font-medium text-gray-700">전화번호</label><input type="tel" id="dealer-phone" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
+                <div><label for="dealer-email" class="block text-sm font-medium text-gray-700">이메일</label><input type="email" id="dealer-email" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 btn">저장하고 시작하기</button>
             </form>
         </div>
@@ -159,7 +84,6 @@
             <div id="userInfo" class="mt-4 p-2 bg-blue-100 text-blue-800 rounded-lg text-sm">서버에 연결하는 중...</div>
             <button id="profile-btn" class="absolute top-0 right-0 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 btn">내 프로필</button>
         </header>
-        
         <div id="store-view" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
@@ -167,104 +91,29 @@
                     <form id="create-job-form" class="space-y-4">
                         <div>
                             <label for="job-date" class="block text-sm font-medium text-gray-700">날짜 선택</label>
-                            <div class="flex items-center space-x-2 mt-1">
-                                <input type="date" id="job-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
-                                <span id="job-day-of-week" class="text-gray-600 font-semibold w-12 text-center"></span>
-                            </div>
+                            <div class="flex items-center space-x-2 mt-1"><input type="date" id="job-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required><span id="job-day-of-week" class="text-gray-600 font-semibold w-12 text-center"></span></div>
                         </div>
-
                         <div>
                             <label class="block text-sm font-medium text-gray-700">시간 및 인원 (24시간 기준)</label>
-                            <div id="time-slots-container" class="space-y-2 mt-1">
-                                </div>
-                            <button type="button" id="add-time-slot-btn" class="mt-2 w-full flex justify-center items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                                다른 시간대 추가
-                            </button>
+                            <div id="time-slots-container" class="space-y-2 mt-1"></div>
+                            <button type="button" id="add-time-slot-btn" class="mt-2 w-full flex justify-center items-center px-4 py-2 border border-dashed border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>다른 시간대 추가</button>
                         </div>
-
                         <div class="grid grid-cols-3 gap-4">
-                            <div>
-                                <label for="job-wage" class="block text-sm font-medium text-gray-700">시급</label>
-                                <select id="job-wage" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                    <option value="20000">20,000원</option>
-                                    <option value="25000">25,000원</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="job-tax" class="block text-sm font-medium text-gray-700">세금 유무</label>
-                                <select id="job-tax" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                    <option value="none">없음</option>
-                                    <option value="3.3">3.3%</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="job-guaranteed-hours" class="block text-sm font-medium text-gray-700">보장 시간</label>
-                                <select id="job-guaranteed-hours" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                    <option value="5">5시간</option>
-                                    <option value="6">6시간</option>
-                                    <option value="7">7시간</option>
-                                    <option value="8">8시간</option>
-                                    <option value="9">9시간</option>
-                                    <option value="10">10시간</option>
-                                </select>
-                            </div>
+                            <div><label for="job-wage" class="block text-sm font-medium text-gray-700">시급</label><select id="job-wage" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="20000">20,000원</option><option value="25000">25,000원</option></select></div>
+                            <div><label for="job-tax" class="block text-sm font-medium text-gray-700">세금 유무</label><select id="job-tax" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="none">없음</option><option value="3.3">3.3%</option></select></div>
+                            <div><label for="job-guaranteed-hours" class="block text-sm font-medium text-gray-700">보장 시간</label><select id="job-guaranteed-hours" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="5">5시간</option><option value="6">6시간</option><option value="7">7시간</option><option value="8">8시간</option><option value="9">9시간</option><option value="10">10시간</option></select></div>
                         </div>
-                        
                         <div class="grid grid-cols-2 gap-4">
-                             <div>
-                                <label for="job-meal-support" class="block text-sm font-medium text-gray-700">식사 지원</label>
-                                <select id="job-meal-support" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                                    <option value="없음">없음</option>
-                                    <option value="있음">있음</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="job-transport-fee" class="block text-sm font-medium text-gray-700">교통비(만원)</label>
-                                <select id="job-transport-fee" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                                    <option value="0">없음</option>
-                                    <option value="1">1만원</option>
-                                    <option value="2">2만원</option>
-                                    <option value="3">3만원</option>
-                                    <option value="4">4만원</option>
-                                </select>
-                            </div>
+                             <div><label for="job-meal-support" class="block text-sm font-medium text-gray-700">식사 지원</label><select id="job-meal-support" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="없음">없음</option><option value="있음">있음</option></select></div>
+                            <div><label for="job-transport-fee" class="block text-sm font-medium text-gray-700">교통비(만원)</label><select id="job-transport-fee" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="0">없음</option><option value="1">1만원</option><option value="2">2만원</option><option value="3">3만원</option><option value="4">4만원</option></select></div>
                         </div>
-
                         <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="job-dresscode-top" class="block text-sm font-medium text-gray-700">복장(상의)</label>
-                                <select id="job-dresscode-top" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                                    <option value="상관없음">상관없음</option>
-                                    <option value="흰셔츠">흰셔츠</option>
-                                    <option value="검은셔츠">검은셔츠</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="job-dresscode-bottom" class="block text-sm font-medium text-gray-700">복장(하의)</label>
-                                <select id="job-dresscode-bottom" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
-                                    <option value="상관없음">상관없음</option>
-                                    <option value="흰바지">흰바지</option>
-                                    <option value="검은바지">검은바지</option>
-                                </select>
-                            </div>
+                            <div><label for="job-dresscode-top" class="block text-sm font-medium text-gray-700">복장(상의)</label><select id="job-dresscode-top" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="상관없음">상관없음</option><option value="흰셔츠">흰셔츠</option><option value="검은셔츠">검은셔츠</option></select></div>
+                            <div><label for="job-dresscode-bottom" class="block text-sm font-medium text-gray-700">복장(하의)</label><select id="job-dresscode-bottom" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md"><option value="상관없음">상관없음</option><option value="흰바지">흰바지</option><option value="검은바지">검은바지</option></select></div>
                         </div>
-
-                        <div>
-                            <label for="job-address" class="block text-sm font-medium text-gray-700">주소</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="text" id="job-address" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="상세 주소를 입력하세요">
-                                <button type="button" id="load-profile-info-btn" class="mt-1 px-3 py-2 bg-gray-200 text-sm rounded-md hover:bg-gray-300 whitespace-nowrap">정보 불러오기</button>
-                            </div>
-                        </div>
-                        <div>
-                            <label for="job-contact" class="block text-sm font-medium text-gray-700">연락처</label>
-                            <input type="tel" id="job-contact" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="연락받을 번호를 입력하세요">
-                        </div>
-                        <div>
-                            <label for="job-notes" class="block text-sm font-medium text-gray-700">기타 사항</label>
-                            <textarea id="job-notes" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="추가적인 요청사항을 적어주세요"></textarea>
-                        </div>
+                        <div><label for="job-address" class="block text-sm font-medium text-gray-700">주소</label><div class="flex items-center space-x-2"><input type="text" id="job-address" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="상세 주소를 입력하세요"><button type="button" id="load-profile-info-btn" class="mt-1 px-3 py-2 bg-gray-200 text-sm rounded-md hover:bg-gray-300 whitespace-nowrap">정보 불러오기</button></div></div>
+                        <div><label for="job-contact" class="block text-sm font-medium text-gray-700">연락처</label><input type="tel" id="job-contact" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="연락받을 번호를 입력하세요"></div>
+                        <div><label for="job-notes" class="block text-sm font-medium text-gray-700">기타 사항</label><textarea id="job-notes" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="추가적인 요청사항을 적어주세요"></textarea></div>
                         <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 btn">공고 게시하기</button>
                     </form>
                 </div>
@@ -297,35 +146,16 @@
              <button id="close-review-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
              <h2 id="review-modal-title" class="text-2xl font-bold mb-6 text-center">리뷰 작성</h2>
              <form id="review-form">
-                <div id="review-form-content" class="space-y-4">
-                    </div>
+                <div id="review-form-content" class="space-y-4"></div>
                 <button type="submit" class="mt-4 w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 btn">제출하기</button>
              </form>
         </div>
     </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
-    <div id="cancel-modal-view" class="modal-backdrop hidden">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
-             <button id="close-cancel-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
-             <h2 class="text-2xl font-bold mb-6 text-center">근무 취소</h2>
-             <p class="text-center text-gray-600 mb-6">취소 주체를 선택해주세요.</p>
-             <div class="flex space-x-4">
-                <button id="store-cancel-btn" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 btn">매장 취소</button>
-                <button id="dealer-cancel-btn" class="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 btn">딜러 취소</button>
-             </div>
-        </div>
-    </div>
-
-    <script type="module">
-      // Firebase SDK import
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      // Firestore를 사용하기 위해 필요한 모든 함수를 임포트합니다.
-      import { 
-        getFirestore, doc, setDoc, getDoc, 
-        collection, addDoc, onSnapshot, updateDoc,
-        arrayUnion, Timestamp
-      } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
+    <script>
       // Your web app's Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyDtZCbjGHbU6ZrUWd_b2Du6zuYADWuHO9k",
@@ -338,19 +168,9 @@
       };
 
       // Firebase 앱 초기화
-      const app = initializeApp(firebaseConfig);
-      
-      // main.js 파일에서 Firestore 관련 기능을 모두 사용하기 위해 window 객체에 할당합니다.
-      window.db = getFirestore(app);
-      window.doc = doc;
-      window.setDoc = setDoc;
-      window.getDoc = getDoc;
-      window.collection = collection;
-      window.addDoc = addDoc;
-      window.onSnapshot = onSnapshot;
-      window.updateDoc = updateDoc;
-      window.arrayUnion = arrayUnion;
-      window.Timestamp = Timestamp;
+      firebase.initializeApp(firebaseConfig);
+      // Firestore 데이터베이스 인스턴스 생성 (main.js에서 db 변수로 사용)
+      const db = firebase.firestore();
     </script>
     
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

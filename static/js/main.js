@@ -3,17 +3,9 @@ let currentUser = { uid: null };
 let currentRole = null;
 let userProfile = null;
 const allJobsData = new Map();
-let reviewTimers = {}; // 리뷰 타이머를 관리하기 위한 객체
-let dealerJobFilter = 'open'; // 딜러 뷰 필터 상태
-let currentCancelInfo = {}; // 취소 정보를 담을 객체
-
-// --- Firebase Firestore 인스턴스 및 함수 가져오기 ---
-// index.html에서 window 객체에 할당한 값들을 가져옵니다.
-const { 
-    db, doc, setDoc, getDoc, 
-    collection, addDoc, onSnapshot, updateDoc,
-    arrayUnion, Timestamp 
-} = window;
+let reviewTimers = {};
+let dealerJobFilter = 'open';
+let currentReviewInfo = {};
 
 // --- UI 요소 ---
 const loginView = document.getElementById('login-view');
@@ -32,10 +24,6 @@ const closeReviewModalBtn = document.getElementById('close-review-modal-btn');
 const reviewForm = document.getElementById('review-form');
 const reviewFormContent = document.getElementById('review-form-content');
 const reviewModalTitle = document.getElementById('review-modal-title');
-const cancelModalView = document.getElementById('cancel-modal-view');
-const closeCancelModalBtn = document.getElementById('close-cancel-modal-btn');
-const storeCancelBtn = document.getElementById('store-cancel-btn');
-const dealerCancelBtn = document.getElementById('dealer-cancel-btn');
 const storeView = document.getElementById('store-view');
 const dealerView = document.getElementById('dealer-view');
 const createJobForm = document.getElementById('create-job-form');
@@ -50,17 +38,15 @@ const loadProfileInfoBtn = document.getElementById('load-profile-info-btn');
 const filterOpenBtn = document.getElementById('filter-open-btn');
 const filterClosedBtn = document.getElementById('filter-closed-btn');
 
-// --- Socket.IO 연결 (사용자 접속 관리용으로만 사용) ---
+
+// --- Socket.IO 연결 ---
 const socket = io();
 
 socket.on('connect', () => {
     console.log('Connected to server with SID:', socket.id);
-    checkLoginState();
 });
 
 // --- 로그인 및 화면 전환 로직 ---
-
-// Firestore: async/await를 사용하여 Firestore에서 프로필을 비동기적으로 로드합니다.
 async function checkLoginState() {
     const userId = sessionStorage.getItem('userId');
     if (userId) {
@@ -69,32 +55,34 @@ async function checkLoginState() {
         userInfoDiv.textContent = `현재 사용자 ID: ${currentUser.uid}`;
         currentRole = userId.startsWith('shop') ? 'store' : 'dealer';
         
-        // Firestore: users 컬렉션에서 userId에 해당하는 문서를 가져옵니다.
-        const userDocRef = doc(db, "users", userId);
+        const userDocRef = db.collection("users").doc(userId);
         
         try {
-            const docSnap = await getDoc(userDocRef);
-
-            if (docSnap.exists()) {
-                // 문서가 존재하면 userProfile에 데이터를 저장하고 앱을 보여줍니다.
+            const docSnap = await userDocRef.get();
+            if (docSnap.exists) {
                 userProfile = docSnap.data();
-                console.log("Firestore에서 프로필 로드 성공:", userProfile);
                 showApp(currentRole);
             } else {
-                // 문서가 존재하지 않으면 첫 로그인으로 간주하고 프로필 설정 화면을 보여줍니다.
-                console.log("프로필이 존재하지 않으므로 설정 화면으로 이동합니다.");
                 userProfile = null;
                 showProfileSetup(currentRole);
             }
         } catch (error) {
-            console.error("Firestore에서 프로필을 가져오는 중 오류 발생:", error);
-            alert("프로필 정보를 불러오는 데 실패했습니다.");
+            console.error("Firestore 프로필 로딩 오류:", error);
+            alert("프로필 정보 로딩에 실패했습니다.");
         }
-
     } else {
         showView('login-view');
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const userId = sessionStorage.getItem('userId');
+    if (userId) {
+        checkLoginState();
+    } else {
+        showView('login-view');
+    }
+});
 
 testLoginForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -125,7 +113,6 @@ function showProfileSetup(role) {
     }
 }
 
-// Firestore: localStorage 대신 Firestore에 프로필을 저장합니다.
 storeProfileForm.addEventListener('submit', (e) => {
     e.preventDefault();
     userProfile = {
@@ -135,21 +122,14 @@ storeProfileForm.addEventListener('submit', (e) => {
         email: document.getElementById('store-email').value,
         reviews: [],
         cancellationCount: 0,
-        createdAt: Timestamp.now() // Firestore 타임스탬프
+        createdAt: firebase.firestore.Timestamp.now()
     };
     
-    setDoc(doc(db, "users", currentUser.uid), userProfile)
-        .then(() => {
-            console.log("매장 프로필이 Firestore에 성공적으로 저장되었습니다.");
-            showApp(currentRole);
-        })
-        .catch((error) => {
-            console.error("Firestore 저장 중 오류 발생: ", error);
-            alert("프로필 저장에 실패했습니다. 다시 시도해 주세요.");
-        });
+    db.collection("users").doc(currentUser.uid).set(userProfile)
+        .then(() => { showApp(currentRole); })
+        .catch((error) => { console.error("Firestore 저장 오류: ", error); });
 });
 
-// Firestore: localStorage 대신 Firestore에 프로필을 저장합니다.
 dealerProfileForm.addEventListener('submit', (e) => {
     e.preventDefault();
     userProfile = {
@@ -165,21 +145,16 @@ dealerProfileForm.addEventListener('submit', (e) => {
         workHistory: [],
         reviews: [],
         cancellationCount: 0,
-        createdAt: Timestamp.now()
+        createdAt: firebase.firestore.Timestamp.now()
     };
 
-    setDoc(doc(db, "users", currentUser.uid), userProfile)
-        .then(() => {
-            console.log("딜러 프로필이 Firestore에 성공적으로 저장되었습니다.");
-            showApp(currentRole);
-        })
-        .catch((error) => {
-            console.error("Firestore 저장 중 오류 발생: ", error);
-            alert("프로필 저장에 실패했습니다. 다시 시도해 주세요.");
-        });
+    db.collection("users").doc(currentUser.uid).set(userProfile)
+        .then(() => { showApp(currentRole); })
+        .catch((error) => { console.error("Firestore 저장 오류: ", error); });
 });
 
-// Firestore: jobs 컬렉션을 실시간으로 감시하는 리스너를 설정합니다.
+let unsubscribeJobs = null; 
+
 function showApp(role) {
     showView('app-container');
     if (role === 'store') {
@@ -190,20 +165,19 @@ function showApp(role) {
         storeView.classList.add('hidden');
     }
     
-    // Firestore 'jobs' 컬렉션 실시간 감시 시작
-    const jobsCollectionRef = collection(db, "jobs");
-    onSnapshot(jobsCollectionRef, (querySnapshot) => {
-        console.log("Firestore jobs 컬렉션에 변경 감지!");
+    if (unsubscribeJobs) unsubscribeJobs();
+
+    const jobsCollectionRef = db.collection("jobs");
+    unsubscribeJobs = jobsCollectionRef.onSnapshot((querySnapshot) => {
         allJobsData.clear();
         querySnapshot.forEach((doc) => {
             allJobsData.set(doc.id, { id: doc.id, ...doc.data() });
         });
-        renderAllViews(); // 데이터가 변경될 때마다 화면 전체를 다시 그립니다.
+        renderAllViews();
     });
 }
 
-
-// --- 프로필 모달 로직 (Firestore 연동) ---
+// --- 프로필 모달 로직 ---
 profileBtn.addEventListener('click', () => {
     showUserProfileModal(currentUser.uid);
 });
@@ -219,10 +193,9 @@ profileDisplayContent.addEventListener('click', async (e) => {
     }
     if (e.target.id === 'edit-profile-btn') {
         const userId = e.target.dataset.userId;
-        const userDocRef = doc(db, "users", userId);
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-            renderProfileEditForm(userId, docSnap.data());
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (userDoc.exists) {
+            renderProfileEditForm(userId, userDoc.data());
         }
     }
     if (e.target.id === 'save-profile-btn') {
@@ -231,12 +204,10 @@ profileDisplayContent.addEventListener('click', async (e) => {
     }
 });
 
-// Firestore: localStorage가 아닌 Firestore에서 프로필 정보를 가져옵니다.
 async function showUserProfileModal(userId) {
-    const userDocRef = doc(db, "users", userId);
     try {
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
+        const docSnap = await db.collection("users").doc(userId).get();
+        if (docSnap.exists) {
             const userToShowProfile = docSnap.data();
             const userToShowRole = userId.startsWith('shop') ? 'store' : 'dealer';
             renderProfileModal(userToShowProfile, userToShowRole, userId);
@@ -248,35 +219,6 @@ async function showUserProfileModal(userId) {
         console.error("프로필 로드 오류:", error);
         alert('프로필 정보를 불러오는 데 실패했습니다.');
     }
-}
-
-// (이 아래의 renderProfileModal, maskPhoneNumber, maskEmail, renderStars 함수는 변경 없음)
-// ... (이전 코드와 동일한 함수들) ...
-function maskPhoneNumber(phone) {
-    if (typeof phone !== 'string' || phone.length < 9) return phone;
-    const parts = phone.replace(/-/g, '').match(/(\d{3})(\d{3,4})(\d{4})/);
-    if (!parts) return phone;
-    return `${parts[1]}-****-${parts[3]}`;
-}
-
-function maskEmail(email) {
-    if (typeof email !== 'string' || !email.includes('@')) return email;
-    const [localPart, domain] = email.split('@');
-    if (localPart.length <= 3) return email;
-    return `${localPart.substring(0, 3)}***@${domain}`;
-}
-
-function renderStars(score) {
-    const fullStars = Math.floor(score);
-    const emptyStars = 5 - fullStars;
-    let starsHtml = '';
-    for (let i = 0; i < fullStars; i++) {
-        starsHtml += `<span class="text-yellow-400">&#9733;</span>`;
-    }
-    for (let i = 0; i < emptyStars; i++) {
-        starsHtml += `<span class="text-gray-300">&#9733;</span>`;
-    }
-    return starsHtml;
 }
 
 function renderProfileModal(profile, role, userId) {
@@ -356,86 +298,41 @@ function renderProfileModal(profile, role, userId) {
 
 function renderProfileEditForm(userId, profile) {
     const role = userId.startsWith('shop') ? 'store' : 'dealer';
-
     let content = '';
     if (role === 'store') {
         content = `
             <div class="space-y-4">
-                <div>
-                    <label for="store-name-edit" class="font-bold">매장 이름</label>
-                    <input type="text" id="store-name-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.name || ''}">
-                </div>
-                <div>
-                    <label for="store-address-edit" class="font-bold">매장 주소</label>
-                    <input type="text" id="store-address-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.address || ''}">
-                </div>
-                <div>
-                    <label for="store-phone-edit" class="font-bold">매장 전화번호</label>
-                    <input type="tel" id="store-phone-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.phone || ''}">
-                </div>
-                <div>
-                    <label for="store-email-edit" class="font-bold">이메일</label>
-                    <input type="email" id="store-email-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.email || ''}">
-                </div>
+                <div><label for="store-name-edit" class="font-bold">매장 이름</label><input type="text" id="store-name-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.name || ''}"></div>
+                <div><label for="store-address-edit" class="font-bold">매장 주소</label><input type="text" id="store-address-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.address || ''}"></div>
+                <div><label for="store-phone-edit" class="font-bold">매장 전화번호</label><input type="tel" id="store-phone-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.phone || ''}"></div>
+                <div><label for="store-email-edit" class="font-bold">이메일</label><input type="email" id="store-email-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.email || ''}"></div>
             </div>
         `;
     } else { // dealer
         const areas = ["서울 강동", "서울 강북", "서울 강남", "서울 강서", "경기북부", "경기남부", "인천", "강원", "충청북도", "충청남도", "경상북도", "경상남도", "전라북도", "전라남도"];
         const residenceOptions = areas.map(area => `<option value="${area}" ${profile.residence === area ? 'selected' : ''}>${area}</option>`).join('');
         const preferenceOptions = areas.map(area => `<option value="${area}" ${profile.preference === area ? 'selected' : ''}>${area}</option>`).join('');
-
         const experienceLevels = ["6개월", "1년", "1년반", "2년", "2년반", "3년 이상"];
         const experienceOptions = experienceLevels.map(level => `<option value="${level}" ${profile.experience === level ? 'selected' : ''}>${level}</option>`).join('');
-
         content = `
             <div class="space-y-4">
-                 <div>
-                    <label for="dealer-gender-edit" class="font-bold">성별</label>
-                    <select id="dealer-gender-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-                        <option value="남" ${profile.gender === '남' ? 'selected' : ''}>남</option>
-                        <option value="여" ${profile.gender === '여' ? 'selected' : ''}>여</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="dealer-age-edit" class="font-bold">나이</label>
-                    <input type="number" id="dealer-age-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.age || ''}">
-                </div>
-                <div>
-                    <label for="dealer-residence-edit" class="font-bold">거주 지역</label>
-                    <select id="dealer-residence-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${residenceOptions}</select>
-                </div>
-                <div>
-                    <label for="dealer-preference-edit" class="font-bold">선호 지역</label>
-                    <select id="dealer-preference-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${preferenceOptions}</select>
-                </div>
-                 <div>
-                    <label for="dealer-experience-edit" class="font-bold">경력</label>
-                    <select id="dealer-experience-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${experienceOptions}</select>
-                </div>
-                <div>
-                    <label for="dealer-experience-detail-edit" class="font-bold">구체 경력</label>
-                    <textarea id="dealer-experience-detail-edit" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md">${profile.experienceDetail || ''}</textarea>
-                </div>
-                 <div>
-                    <label for="dealer-phone-edit" class="font-bold">전화번호</label>
-                    <input type="tel" id="dealer-phone-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.phone || ''}">
-                </div>
-                <div>
-                    <label for="dealer-email-edit" class="font-bold">이메일</label>
-                    <input type="email" id="dealer-email-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.email || ''}">
-                </div>
+                 <div><label for="dealer-gender-edit" class="font-bold">성별</label><select id="dealer-gender-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"><option value="남" ${profile.gender === '남' ? 'selected' : ''}>남</option><option value="여" ${profile.gender === '여' ? 'selected' : ''}>여</option></select></div>
+                <div><label for="dealer-age-edit" class="font-bold">나이</label><input type="number" id="dealer-age-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.age || ''}"></div>
+                <div><label for="dealer-residence-edit" class="font-bold">거주 지역</label><select id="dealer-residence-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${residenceOptions}</select></div>
+                <div><label for="dealer-preference-edit" class="font-bold">선호 지역</label><select id="dealer-preference-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${preferenceOptions}</select></div>
+                 <div><label for="dealer-experience-edit" class="font-bold">경력</label><select id="dealer-experience-edit" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">${experienceOptions}</select></div>
+                <div><label for="dealer-experience-detail-edit" class="font-bold">구체 경력</label><textarea id="dealer-experience-detail-edit" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md">${profile.experienceDetail || ''}</textarea></div>
+                 <div><label for="dealer-phone-edit" class="font-bold">전화번호</label><input type="tel" id="dealer-phone-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.phone || ''}"></div>
+                <div><label for="dealer-email-edit" class="font-bold">이메일</label><input type="email" id="dealer-email-edit" class="mt-1 w-full p-2 border border-gray-300 rounded-md" value="${profile.email || ''}"></div>
             </div>
         `;
     }
-
     profileDisplayContent.innerHTML = content + `<button id="save-profile-btn" data-user-id="${userId}" class="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 btn">프로필 저장</button>`;
 }
 
-// Firestore: 프로필 수정 내용을 Firestore에 업데이트합니다.
 async function saveProfile(userId) {
     const role = userId.startsWith('shop') ? 'store' : 'dealer';
     let updatedData = {};
-
     if (role === 'store') {
         updatedData = {
             name: document.getElementById('store-name-edit').value,
@@ -443,7 +340,7 @@ async function saveProfile(userId) {
             phone: document.getElementById('store-phone-edit').value,
             email: document.getElementById('store-email-edit').value,
         };
-    } else { // dealer
+    } else {
         updatedData = {
             gender: document.getElementById('dealer-gender-edit').value,
             age: document.getElementById('dealer-age-edit').value,
@@ -455,24 +352,19 @@ async function saveProfile(userId) {
             email: document.getElementById('dealer-email-edit').value,
         };
     }
-
-    const userDocRef = doc(db, "users", userId);
+    const userDocRef = db.collection("users").doc(userId);
     try {
-        await updateDoc(userDocRef, updatedData);
+        await userDocRef.update(updatedData);
         alert('프로필이 성공적으로 수정되었습니다.');
-        
-        // 현재 로그인한 사용자의 프로필을 수정했다면 전역 변수도 업데이트
         if (userId === currentUser.uid) {
             userProfile = { ...userProfile, ...updatedData };
         }
-        
-        showUserProfileModal(userId); // 수정 후 다시 프로필 조회 모드로 전환
+        showUserProfileModal(userId);
     } catch (error) {
         console.error("프로필 업데이트 오류:", error);
         alert('프로필 수정에 실패했습니다.');
     }
 }
-
 
 // --- 새 공고 양식 로직 ---
 jobDateInput.addEventListener('change', (e) => {
@@ -486,14 +378,12 @@ jobDateInput.addEventListener('change', (e) => {
         jobDayOfWeekSpan.textContent = '';
     }
 });
-
 loadProfileInfoBtn.addEventListener('click', () => {
     if (userProfile) {
         document.getElementById('job-address').value = userProfile.address || '';
         document.getElementById('job-contact').value = userProfile.phone || '';
     }
 });
-
 function createTimeSlotElement() {
     const div = document.createElement('div');
     div.className = 'flex items-center space-x-2';
@@ -504,19 +394,15 @@ function createTimeSlotElement() {
     `;
     timeSlotsContainer.appendChild(div);
 }
-
 addTimeSlotBtn.addEventListener('click', createTimeSlotElement);
-
 timeSlotsContainer.addEventListener('click', (e) => {
     if (e.target.classList.contains('remove-time-slot-btn')) {
         e.target.parentElement.remove();
     }
 });
-
 createTimeSlotElement();
 
-
-// --- 렌더링 함수 (변경 없음) ---
+// --- 렌더링 함수 ---
 function renderAllViews() {
     if (!currentUser.uid) return;
     if (currentRole === 'store') {
@@ -526,26 +412,23 @@ function renderAllViews() {
     }
 }
 
-// (이 아래의 renderMyJobs, renderJobDetails, renderAllJobs 함수들은 이전 코드와 거의 동일합니다.
-//  데이터 소스가 allJobsData Map으로 동일하기 때문입니다.)
-
 function renderMyJobs() {
     const myJobs = [...allJobsData.values()]
         .filter(job => job.storeId === currentUser.uid)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+        .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
 
     myJobsList.innerHTML = myJobs.length === 0 ? '<p class="text-gray-500">아직 등록한 공고가 없습니다.</p>' : '';
     myJobs.forEach(jobData => {
         const jobCard = document.createElement('div');
         jobCard.className = 'border p-4 rounded-lg bg-gray-50 job-card';
         
-        const date = new Date(jobData.date);
+        const date = jobData.date ? new Date(jobData.date) : new Date();
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const dayOfWeek = days[date.getUTCDay()];
         const formattedDate = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. (${dayOfWeek})`;
 
         const contentHtml = `
-            <div class="flex justify-between items-center cursor-pointer toggle-details-btn">
+            <div class="flex justify-between items-center cursor-pointer toggle-details-btn" data-job-id="${jobData.id}">
                 <h3 class="text-lg font-bold">${formattedDate} 공고</h3>
                 <div class="flex items-center space-x-3">
                     <span class="text-xs font-bold py-1 px-3 rounded-full ${jobData.status === 'open' ? 'status-open' : 'status-closed'}">${jobData.status === 'open' ? '모집중' : '마감'}</span>
@@ -557,11 +440,8 @@ function renderMyJobs() {
         
         jobCard.innerHTML = contentHtml;
         myJobsList.appendChild(jobCard);
-        
-        // 세부 정보 렌더링은 토글 버튼 클릭 시 처리
     });
 }
-
 
 function renderJobDetails(container, jobData) {
      const timeSlotsHtml = (jobData.timeSlots || []).map(slot => {
@@ -569,10 +449,6 @@ function renderJobDetails(container, jobData) {
         const applicantsHtml = applicantsForSlot.map(app => {
             const isSelected = (slot.selectedDealers || []).includes(app.dealerId);
             let actionHtml = '';
-
-            const workStartTime = new Date(`${jobData.date}T${slot.time}`);
-            const now = new Date();
-
             if (isSelected) {
                  actionHtml = `<span class="text-sm font-bold text-green-600">선택됨</span>`;
             } else if (slot.status === 'open') {
@@ -583,7 +459,6 @@ function renderJobDetails(container, jobData) {
                     actionHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${app.time}" class="select-dealer-btn bg-green-500 text-white px-3 py-1 text-sm rounded-md hover:bg-green-600 btn">선택</button>`;
                 }
             }
-
             return `
             <div class="flex justify-between items-center p-2 bg-white rounded-md mt-1 border">
                 <div>
@@ -593,7 +468,6 @@ function renderJobDetails(container, jobData) {
                 ${actionHtml}
             </div>`;
         }).join('') || '<p class="text-xs text-gray-500 mt-1">지원자 없음</p>';
-
         return `
             <div class="mt-2 pt-2 border-t">
                 <h5 class="font-bold">${slot.time} (${(slot.selectedDealers || []).length}/${slot.personnel}명 모집) ${slot.status === 'closed' ? '<span class="text-red-500">(마감)</span>': ''}</h5>
@@ -601,24 +475,8 @@ function renderJobDetails(container, jobData) {
             </div>
         `;
     }).join('');
-
-    const taxText = jobData.tax === '3.3' ? '3.3%' : '없음';
-    const transportText = jobData.transportFee > 0 ? `${jobData.transportFee}만원` : '없음';
-
-    container.innerHTML = `
-        <div class="text-sm text-gray-700">
-            <p><strong>주소:</strong> ${jobData.address || '정보 없음'}</p>
-            <p><strong>시급:</strong> ${jobData.wage ? parseInt(jobData.wage).toLocaleString() : '정보 없음'}원</p>
-            <p><strong>세금:</strong> ${taxText}</p>
-            <p><strong>보장 시간:</strong> ${jobData.guaranteedHours || '정보 없음'}시간</p>
-            <p><strong>식사 지원:</strong> ${jobData.mealSupport || '없음'}</p>
-            <p><strong>교통비:</strong> ${transportText}</p>
-            <p><strong>복장:</strong> 상의(${jobData.dressCodeTop || '상관없음'}), 하의(${jobData.dressCodeBottom || '상관없음'})</p>
-            <p><strong>기타:</strong> ${jobData.notes || '없음'}</p>
-        </div>
-        <div class="mt-4"><h4 class="font-semibold text-md">시간대별 지원자 목록</h4>${timeSlotsHtml}</div>`;
+    container.innerHTML = `<div class="mt-4"><h4 class="font-semibold text-md">시간대별 지원자 목록</h4>${timeSlotsHtml}</div>`;
 }
-
 
 function renderAllJobs() {
     const filteredJobs = [...allJobsData.values()].filter(job => {
@@ -626,24 +484,18 @@ function renderAllJobs() {
         if (dealerJobFilter === 'closed') return job.status === 'closed';
         return true;
     }).sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-
     allJobsList.innerHTML = filteredJobs.length === 0 ? `<p class="text-gray-500 col-span-full text-center">해당하는 공고가 없습니다.</p>` : '';
-    
     filteredJobs.forEach(jobData => {
         const jobElement = document.createElement('div');
         jobElement.className = 'bg-white p-4 rounded-lg shadow-md job-card flex flex-col';
-        
         const date = new Date(jobData.date);
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const dayOfWeek = days[date.getUTCDay()];
         const formattedDate = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. (${dayOfWeek})`;
-
         const statusClass = jobData.status === 'open' ? 'status-open' : 'status-closed';
         const statusText = jobData.status === 'open' ? '모집중' : '마감';
-
         const timeSlotsWithButtonsHtml = (jobData.timeSlots || []).map(slot => {
             let buttonHtml = '';
-
             if (slot.status === 'closed') {
                 if ((slot.selectedDealers || []).includes(currentUser.uid)) {
                      buttonHtml = `<span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">근무확정</span>`;
@@ -653,7 +505,6 @@ function renderAllJobs() {
             } else {
                 const hasAppliedToSlot = (jobData.applicants || []).some(app => app.dealerId === currentUser.uid && app.time === slot.time);
                 const hasBeenSelectedInAnotherSlot = (jobData.timeSlots || []).some(s => (s.selectedDealers || []).includes(currentUser.uid));
-                
                 if (hasBeenSelectedInAnotherSlot && !hasAppliedToSlot) {
                     buttonHtml = `<button class="bg-gray-400 text-white text-sm py-1 px-3 rounded-md cursor-not-allowed" disabled>지원불가</button>`;
                 } else if (hasAppliedToSlot) {
@@ -669,7 +520,6 @@ function renderAllJobs() {
                 </div>
             `;
         }).join('');
-
         const detailsHtml = `
             <div class="job-details mt-4 hidden">
                 <div class="flex-grow">
@@ -683,7 +533,6 @@ function renderAllJobs() {
                 </div>
             </div>
         `;
-        
         const headerHtml = `
             <div class="flex justify-between items-center cursor-pointer toggle-details-btn">
                 <div>
@@ -696,19 +545,15 @@ function renderAllJobs() {
                 </div>
             </div>
         `;
-
         jobElement.innerHTML = headerHtml + detailsHtml;
         allJobsList.appendChild(jobElement);
     });
 }
 
 
-// --- 이벤트 핸들러 (Firestore 연동) ---
-
-// Firestore: socket.emit 대신 Firestore 문서를 직접 생성합니다.
+// --- 이벤트 핸들러 ---
 createJobForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    
     const timeSlots = [];
     timeSlotsContainer.querySelectorAll('.flex').forEach(el => {
         const time = el.querySelector('.time-input').value;
@@ -717,17 +562,15 @@ createJobForm.addEventListener('submit', (e) => {
             timeSlots.push({ time, personnel: parseInt(personnel), status: 'open', selectedDealers: [] });
         }
     });
-
     if (timeSlots.length === 0) {
         alert('최소 하나 이상의 시간과 인원을 입력해야 합니다.');
         return;
     }
-
     const jobData = {
         storeId: currentUser.uid,
         status: 'open',
         applicants: [],
-        createdAt: Timestamp.now(),
+        createdAt: firebase.firestore.Timestamp.now(),
         date: document.getElementById('job-date').value,
         timeSlots: timeSlots,
         wage: document.getElementById('job-wage').value,
@@ -741,73 +584,60 @@ createJobForm.addEventListener('submit', (e) => {
         contact: document.getElementById('job-contact').value,
         notes: document.getElementById('job-notes').value,
     };
-    
-    addDoc(collection(db, "jobs"), jobData)
+    db.collection("jobs").add(jobData)
         .then(docRef => console.log("새 공고 등록 성공:", docRef.id))
         .catch(error => console.error("공고 등록 실패:", error));
-    
     createJobForm.reset();
     jobDayOfWeekSpan.textContent = '';
     timeSlotsContainer.innerHTML = '';
     createTimeSlotElement();
 });
 
-// Firestore: 지원자 정보를 job 문서의 applicants 배열에 추가합니다.
 allJobsList.addEventListener('click', async (e) => {
     if (e.target.classList.contains('apply-btn')) {
         const { jobId, time } = e.target.dataset;
-        const jobDocRef = doc(db, "jobs", jobId);
-        
+        const jobDocRef = db.collection("jobs").doc(jobId);
         const applicantInfo = {
             dealerId: currentUser.uid,
-            appliedAt: Timestamp.now(),
+            appliedAt: firebase.firestore.Timestamp.now(),
             time: time 
         };
-
         try {
-            await updateDoc(jobDocRef, {
-                applicants: arrayUnion(applicantInfo)
+            await jobDocRef.update({
+                applicants: firebase.firestore.FieldValue.arrayUnion(applicantInfo)
             });
             console.log("지원 완료!");
         } catch (error) {
             console.error("지원 처리 중 오류:", error);
         }
     }
-    
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
         card.querySelector('.job-details').classList.toggle('hidden');
     }
 });
 
-// Firestore: 딜러 선택 시, job 문서의 timeSlots를 업데이트합니다.
 myJobsList.addEventListener('click', async (e) => {
     if (e.target.classList.contains('select-dealer-btn')) {
         const { jobId, dealerId, time } = e.target.dataset;
-        
         if (!confirm(`${time} 시간대에 ${dealerId} 님을 선택하시겠습니까?`)) return;
-
-        const jobDocRef = doc(db, "jobs", jobId);
+        const jobDocRef = db.collection("jobs").doc(jobId);
         try {
-            const docSnap = await getDoc(jobDocRef);
-            if (docSnap.exists()) {
+            const docSnap = await jobDocRef.get();
+            if (docSnap.exists) {
                 const jobData = docSnap.data();
                 const newTimeSlots = jobData.timeSlots.map(slot => {
                     if (slot.time === time) {
-                        // 선택된 딜러 추가
+                        if (!slot.selectedDealers) slot.selectedDealers = [];
                         slot.selectedDealers.push(dealerId);
-                        // 정원이 차면 마감 처리
                         if (slot.selectedDealers.length >= slot.personnel) {
                             slot.status = 'closed';
                         }
                     }
                     return slot;
                 });
-                
-                // 전체 슬롯이 마감되었는지 확인
                 const allSlotsClosed = newTimeSlots.every(slot => slot.status === 'closed');
-                
-                await updateDoc(jobDocRef, {
+                await jobDocRef.update({
                     timeSlots: newTimeSlots,
                     status: allSlotsClosed ? 'closed' : 'open'
                 });
@@ -817,19 +647,19 @@ myJobsList.addEventListener('click', async (e) => {
             console.error("딜러 선택 처리 중 오류:", error);
         }
     }
-    
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
         const details = card.querySelector('.job-details');
-        details.classList.toggle('hidden');
-        // 세부 내용이 비어있으면 렌더링
-        if (!details.classList.contains('hidden') && details.innerHTML === '') {
-             const jobId = e.target.closest('.toggle-details-btn').querySelector('[data-job-id]')?.dataset.jobId;
-             const jobData = allJobsData.get(jobId);
-             if (jobData) {
+        const isHidden = details.classList.contains('hidden');
+        if (isHidden) {
+            const jobId = card.querySelector('.toggle-details-btn').dataset.jobId;
+            const jobData = allJobsData.get(jobId);
+            if (jobData) {
                 renderJobDetails(details, jobData);
-             }
+            }
         }
+        details.classList.toggle('hidden');
+        card.classList.toggle('collapsed', !isHidden);
     }
 });
         
@@ -851,31 +681,135 @@ filterClosedBtn.addEventListener('click', () => {
     renderAllJobs();
 });
 
-
-// (리뷰 모달 로직과 지역 선택 로직은 변경 없음)
-// ...
-let currentReviewInfo = {};
+// --- 리뷰 모달 로직 (Firestore 연동 완료) ---
 function openReviewModal(reviewerRole, reviewData) {
-    // ...
+    currentReviewInfo = { reviewerRole, ...reviewData };
+    reviewModalTitle.textContent = reviewerRole === 'dealer' ? '매장 리뷰 작성' : '딜러 리뷰 작성';
+    let formHtml = '';
+    if (reviewerRole === 'dealer') {
+        formHtml = `
+            ${createStarRatingHtml('workIntensity', '업무 강도 쉬움')}
+            ${createStarRatingHtml('shopKindness', '매장 친절도')}
+            ${createStarRatingHtml('extraWork', '딜러 외 근무안함(청소,정리)')}
+        `;
+    } else { // store
+        formHtml = `
+            ${createStarRatingHtml('onTime', '정시 도착')}
+            ${createStarRatingHtml('dealerKindness', '딜러 친절도')}
+        `;
+    }
+    reviewFormContent.innerHTML = formHtml + `
+        <div>
+            <label for="review-notes" class="block text-sm font-medium text-gray-700">기타 사항 (선택)</label>
+            <textarea id="review-notes" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md"></textarea>
+        </div>
+    `;
+    reviewModalView.classList.remove('hidden');
 }
+
 function createStarRatingHtml(id, label) {
-    // ...
+    return `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">${label}</label>
+            <div class="flex space-x-1 text-3xl text-gray-300 star-rating" data-id="${id}">
+                <span data-value="1" class="cursor-pointer">&#9733;</span>
+                <span data-value="2" class="cursor-pointer">&#9733;</span>
+                <span data-value="3" class="cursor-pointer">&#9733;</span>
+                <span data-value="4" class="cursor-pointer">&#9733;</span>
+                <span data-value="5" class="cursor-pointer">&#9733;</span>
+            </div>
+            <input type="hidden" id="rating-${id}" value="0">
+        </div>
+    `;
 }
+
 closeReviewModalBtn.addEventListener('click', () => {
     reviewModalView.classList.add('hidden');
 });
+
 reviewFormContent.addEventListener('click', (e) => {
-    // ...
+    const star = e.target.closest('span[data-value]');
+    if (star) {
+        const container = star.parentElement;
+        const rating = star.dataset.value;
+        const ratingId = container.dataset.id;
+        document.getElementById(`rating-${ratingId}`).value = rating;
+        Array.from(container.children).forEach((s, index) => {
+            s.style.color = index < rating ? '#FBBF24' : '#D1D5DB';
+        });
+    }
 });
-reviewForm.addEventListener('submit', (e) => {
-    // ...
+
+reviewForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    let reviewData;
+    let targetUserId;
+    let reviewerUpdateData = {};
+    if (currentReviewInfo.reviewerRole === 'dealer') {
+        targetUserId = currentReviewInfo.storeId;
+        reviewData = {
+            dealerId: currentUser.uid,
+            ratings: {
+                workIntensity: parseInt(document.getElementById('rating-workIntensity').value),
+                shopKindness: parseInt(document.getElementById('rating-shopKindness').value),
+                extraWork: parseInt(document.getElementById('rating-extraWork').value),
+            },
+            notes: document.getElementById('review-notes').value,
+            createdAt: firebase.firestore.Timestamp.now()
+        };
+        const jobData = allJobsData.get(currentReviewInfo.jobId);
+        reviewerUpdateData = {
+            workHistory: firebase.firestore.FieldValue.arrayUnion({
+                date: jobData.date,
+                storeName: currentReviewInfo.storeId,
+                time: currentReviewInfo.time
+            }),
+            completedReviews: firebase.firestore.FieldValue.arrayUnion({
+                jobId: currentReviewInfo.jobId, 
+                time: currentReviewInfo.time
+            })
+        };
+    } else { // store
+        targetUserId = currentReviewInfo.dealerId;
+        reviewData = {
+            storeId: currentUser.uid,
+            ratings: {
+                onTime: parseInt(document.getElementById('rating-onTime').value),
+                dealerKindness: parseInt(document.getElementById('rating-dealerKindness').value),
+            },
+            notes: document.getElementById('review-notes').value,
+            createdAt: firebase.firestore.Timestamp.now()
+        };
+        reviewerUpdateData = {
+            completedReviews: firebase.firestore.FieldValue.arrayUnion({
+                jobId: currentReviewInfo.jobId, 
+                time: currentReviewInfo.time, 
+                reviewedUser: currentReviewInfo.dealerId
+            })
+        };
+    }
+    try {
+        await db.collection("users").doc(targetUserId).update({
+            reviews: firebase.firestore.FieldValue.arrayUnion(reviewData)
+        });
+        const reviewerDocRef = db.collection("users").doc(currentUser.uid);
+        await reviewerDocRef.update(reviewerUpdateData);
+        const updatedProfileSnap = await reviewerDocRef.get();
+        if(updatedProfileSnap.exists) { userProfile = updatedProfileSnap.data(); }
+        alert('리뷰가 성공적으로 제출되었습니다!');
+        reviewForm.reset();
+        reviewModalView.classList.add('hidden');
+    } catch (error) {
+        console.error("리뷰 제출 오류: ", error);
+        alert("리뷰 제출에 실패했습니다.");
+    }
 });
+
+// --- 기타 유틸리티 함수 ---
 function populateAreaSelects(residenceSelectEl, preferenceSelectEl) {
     const areas = ["서울 강동", "서울 강북", "서울 강남", "서울 강서", "경기북부", "경기남부", "인천", "강원", "충청북도", "충청남도", "경상북도", "경상남도", "전라북도", "전라남도"];
-    
-    residenceSelectEl.innerHTML = '';
-    preferenceSelectEl.innerHTML = '';
-    
+    residenceSelectEl.innerHTML = '<option value="">선택</option>';
+    preferenceSelectEl.innerHTML = '<option value="">선택</option>';
     areas.forEach(area => {
         residenceSelectEl.innerHTML += `<option value="${area}">${area}</option>`;
         preferenceSelectEl.innerHTML += `<option value="${area}">${area}</option>`;
