@@ -252,6 +252,18 @@ async function showUserProfileModal(userId) {
 }
 
 function renderProfileModal(profile, role, userId) {
+    // ✨ 메시지 버튼 HTML을 담을 변수
+    let messageButtonHtml = '';
+    
+    // ✨ 현재 보는 프로필이 내 프로필이 아니고, 이메일 정보가 있을 경우에만 버튼 생성
+    if (userId !== currentUser.uid && profile.email) {
+        messageButtonHtml = `
+            <a href="mailto:${profile.email}" class="ml-2 bg-green-500 text-white px-3 py-2 text-sm rounded-md hover:bg-green-600 btn whitespace-nowrap">
+                메세지
+            </a>
+        `;
+    }
+
     let content = '';
     if (role === 'store') {
         const reviews = profile.reviews || [];
@@ -278,7 +290,16 @@ function renderProfileModal(profile, role, userId) {
                 <div><label class="font-bold">매장 이름</label><p class="p-2 bg-gray-100 rounded mt-1">${profile.name}</p></div>
                 <div><label class="font-bold">매장 주소</label><p class="p-2 bg-gray-100 rounded mt-1 flex items-center">${profile.address}${mapLinks}</p></div>
                 <div><label class="font-bold">매장 전화번호</label><p class="p-2 bg-gray-100 rounded mt-1">${profile.phone}</p></div>
-                <div><label class="font-bold">이메일</label><p class="p-2 bg-gray-100 rounded mt-1">${maskEmail(profile.email)}</p></div>
+                
+                <!-- ✨ 수정된 이메일 표시 부분 -->
+                <div>
+                    <label class="font-bold">이메일</label>
+                    <div class="flex items-center mt-1">
+                        <p class="p-2 bg-gray-100 rounded flex-grow">${maskEmail(profile.email)}</p>
+                        ${messageButtonHtml}
+                    </div>
+                </div>
+
                 <div><label class="font-bold">매장 취소 횟수</label><p class="p-2 bg-gray-100 rounded mt-1">${profile.cancellationCount || 0}회</p></div>
                 <div><label class="font-bold">딜러 리뷰</label>
                     <div class="text-sm p-2 bg-gray-100 rounded mt-1 space-y-1">
@@ -310,7 +331,16 @@ function renderProfileModal(profile, role, userId) {
                 <div><label class="font-bold">경력</label><p class="p-2 bg-gray-100 rounded mt-1">${profile.experience}</p></div>
                 <div><label class="font-bold">구체 경력</label><p class="p-2 bg-gray-100 rounded mt-1 whitespace-pre-wrap">${profile.experienceDetail || '없음'}</p></div>
                 <div><label class="font-bold">전화번호</label><p class="p-2 bg-gray-100 rounded mt-1">${maskPhoneNumber(profile.phone)}</p></div>
-                <div><label class="font-bold">이메일</label><p class="p-2 bg-gray-100 rounded mt-1">${maskEmail(profile.email)}</p></div>
+
+                <!-- ✨ 수정된 이메일 표시 부분 -->
+                <div>
+                    <label class="font-bold">이메일</label>
+                    <div class="flex items-center mt-1">
+                        <p class="p-2 bg-gray-100 rounded flex-grow">${maskEmail(profile.email)}</p>
+                        ${messageButtonHtml}
+                    </div>
+                </div>
+                
                 <div><label class="font-bold">딜러 취소 횟수</label><p class="p-2 bg-gray-100 rounded mt-1">${profile.cancellationCount || 0}회</p></div>
                 <div><label class="font-bold">근무 이력</label><ul class="space-y-1 mt-1 max-h-40 overflow-y-auto">${workHistoryHtml}</ul></div>
                 <div><label class="font-bold">매장 리뷰</label>
