@@ -8,6 +8,7 @@ const allJobsData = new Map();
 let reviewTimers = {};
 let dealerJobFilter = 'open';
 let currentReviewInfo = {};
+let currentCancellationInfo = {}; // ✨ 채용 취소 정보 저장을 위한 전역 변수
 
 // --- UI 요소 ---
 const loginView = document.getElementById('login-view');
@@ -481,7 +482,13 @@ function renderJobDetails(container, jobData) {
            const isSelected = (slot.selectedDealers || []).includes(app.dealerId);
            let actionHtml = '';
            if (isSelected) {
-                actionHtml = `<span class="text-sm font-bold text-green-600">선택됨</span>`;
+                // ✨ 수정된 부분: 선택됨 옆에 취소 버튼 추가
+                actionHtml = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-bold text-green-600">선택됨</span>
+                        <button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="cancel-selection-btn bg-red-500 text-white px-2 py-1 text-xs rounded-md hover:bg-red-600 btn">취소</button>
+                    </div>
+                `;
            } else if (slot.status === 'open') {
                const hasBeenSelectedInAnotherSlot = (jobData.timeSlots || []).some(s => (s.selectedDealers || []).includes(app.dealerId));
                if (hasBeenSelectedInAnotherSlot) {
@@ -558,7 +565,6 @@ function renderAllJobs() {
             
             if (slot.status === 'closed') {
                 if ((slot.selectedDealers || []).includes(currentUser.uid)) {
-                    // --- ✨ 수정된 부분 시작 ---
                     let reviewButtonHtml = '';
                     const hasReviewed = (userProfile.completedReviews || []).some(
                         review => review.jobId === jobData.id && review.time === slot.time
@@ -571,17 +577,19 @@ function renderAllJobs() {
                         const now = new Date();
                         const hoursSinceWork = (now - workDateTime) / (1000 * 60 * 60);
 
-                        if (hoursSinceWork >= 24 && hoursSinceWork <= 48) {
+                        const reviewPeriodStartHours = 12;
+                        const reviewPeriodEndHours = 168; // 7일 * 24시간
+
+                        if (hoursSinceWork >= reviewPeriodStartHours && hoursSinceWork <= reviewPeriodEndHours) {
                             reviewButtonHtml = `<button data-job-id="${jobData.id}" data-store-id="${jobData.storeId}" data-time="${slot.time}" class="write-review-btn ml-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded hover:bg-purple-700 btn">리뷰쓰기</button>`;
-                        } else if (hoursSinceWork < 24) {
-                            const hoursLeft = (24 - hoursSinceWork).toFixed(0);
-                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="근무 종료 24시간 후부터 작성 가능합니다. (${hoursLeft}시간 남음)" disabled>리뷰쓰기</button>`;
+                        } else if (hoursSinceWork < reviewPeriodStartHours) {
+                            const hoursLeft = (reviewPeriodStartHours - hoursSinceWork).toFixed(0);
+                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="근무 종료 12시간 후부터 작성 가능합니다. (${hoursLeft}시간 남음)" disabled>리뷰쓰기</button>`;
                         } else {
-                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="리뷰 작성 기간이 지났습니다." disabled>리뷰쓰기</button>`;
+                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="리뷰 작성 기간(7일)이 지났습니다." disabled>기간만료</button>`;
                         }
                     }
                     buttonHtml = `<span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">근무확정</span>${reviewButtonHtml}`;
-                    // --- ✨ 수정된 부분 끝 ---
                 } else {
                      buttonHtml = `<button class="bg-gray-500 text-white text-sm py-1 px-3 rounded-md cursor-not-allowed" disabled>마감</button>`;
                 }
@@ -612,12 +620,21 @@ function renderAllJobs() {
             `;
         }).join('');
 
+        const taxText = jobData.tax === '3.3' ? '3.3%' : '없음';
+        const transportText = jobData.transportFee > 0 ? `${jobData.transportFee}만원` : '없음';
+
         const detailsHtml = `
             <div class="job-details mt-4 hidden">
-                <div class="flex-grow">
-                    <p class="font-bold text-gray-800"><button class="text-blue-600 hover:underline view-profile-btn" data-user-id="${jobData.storeId}">${jobData.storeId}</button></p>
-                    <p class="text-sm text-gray-500 mb-2 flex items-center"><strong>주소:</strong>&nbsp;<span>${jobData.address || '정보 없음'}</span></p>
-                     <p class="text-sm text-gray-500 mb-2"><strong>시급:</strong> ${jobData.wage ? parseInt(jobData.wage).toLocaleString() : '정보 없음'}원</p>
+                <div class="flex-grow text-sm text-gray-700 space-y-1">
+                    <p><strong>매장:</strong> <button class="text-blue-600 hover:underline view-profile-btn" data-user-id="${jobData.storeId}">${jobData.storeId}</button></p>
+                    <p><strong>주소:</strong> ${jobData.address || '정보 없음'}</p>
+                    <p><strong>시급:</strong> ${jobData.wage ? parseInt(jobData.wage).toLocaleString() : '정보 없음'}원</p>
+                    <p><strong>세금:</strong> ${taxText}</p>
+                    <p><strong>보장 시간:</strong> ${jobData.guaranteedHours || '정보 없음'}시간</p>
+                    <p><strong>식사 지원:</strong> ${jobData.mealSupport || '없음'}</p>
+                    <p><strong>교통비:</strong> ${transportText}</p>
+                    <p><strong>복장:</strong> 상의(${jobData.dressCodeTop || '상관없음'}), 하의(${jobData.dressCodeBottom || '상관없음'})</p>
+                    <p><strong>기타:</strong> ${jobData.notes || '없음'}</p>
                 </div>
                 <div class="mt-4">
                     <h4 class="font-semibold text-md border-t pt-2">시간대별 지원</h4>
@@ -714,12 +731,10 @@ allJobsList.addEventListener('click', async (e) => {
             console.error("지원 처리 중 오류:", error);
         }
     }
-    // --- ✨ 추가된 부분 ---
     if (e.target.classList.contains('write-review-btn')) {
         const { jobId, storeId, time } = e.target.dataset;
         openReviewModal('dealer', { jobId, storeId, time });
     }
-    // --- ✨ 추가된 부분 끝 ---
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
         card.querySelector('.job-details').classList.toggle('hidden');
@@ -762,6 +777,13 @@ myJobsList.addEventListener('click', async (e) => {
             console.error("딜러 선택 처리 중 오류:", error);
         }
     }
+    
+    // ✨ 추가된 부분: 취소 버튼 이벤트 처리
+    if (e.target.classList.contains('cancel-selection-btn')) {
+        const { jobId, dealerId, time } = e.target.dataset;
+        openCancellationModal({ jobId, dealerId, time });
+    }
+
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
         const details = card.querySelector('.job-details');
@@ -919,6 +941,107 @@ reviewForm.addEventListener('submit', async (e) => {
         alert("리뷰 제출에 실패했습니다.");
     }
 });
+
+// --- ✨ 채용 취소 관련 함수들 시작 ---
+function openCancellationModal(info) {
+    currentCancellationInfo = info;
+
+    const existingModal = document.getElementById('cancellation-modal-view');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
+             <button id="close-cancellation-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+             <h2 class="text-2xl font-bold mb-6 text-center">채용 취소</h2>
+             <form id="cancellation-form">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">취소 주체</label>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex items-center">
+                                <input id="cancel-by-store" name="cancellation-by" type="radio" value="store" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" checked>
+                                <label for="cancel-by-store" class="ml-3 block text-sm font-medium text-gray-700">매장 취소</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="cancel-by-dealer" name="cancellation-by" type="radio" value="dealer" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                <label for="cancel-by-dealer" class="ml-3 block text-sm font-medium text-gray-700">딜러 취소</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="cancellation-reason" class="block text-sm font-medium text-gray-700">취소 사유 (필수)</label>
+                        <textarea id="cancellation-reason" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md" required></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="mt-4 w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 btn">취소 확정</button>
+             </form>
+        </div>
+    `;
+    
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.id = 'cancellation-modal-view';
+    modalBackdrop.className = 'modal-backdrop flex justify-center items-center fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50';
+    modalBackdrop.innerHTML = modalHtml;
+    
+    document.body.appendChild(modalBackdrop);
+
+    document.getElementById('close-cancellation-modal-btn').addEventListener('click', closeCancellationModal);
+    document.getElementById('cancellation-form').addEventListener('submit', handleCancellationSubmit);
+}
+
+function closeCancellationModal() {
+    const modal = document.getElementById('cancellation-modal-view');
+    if (modal) modal.remove();
+}
+
+async function handleCancellationSubmit(e) {
+    e.preventDefault();
+    const reason = document.getElementById('cancellation-reason').value;
+    if (!reason.trim()) {
+        alert('취소 사유를 반드시 입력해야 합니다.');
+        return;
+    }
+    const cancelledBy = document.querySelector('input[name="cancellation-by"]:checked').value;
+    const { jobId, dealerId, time } = currentCancellationInfo;
+
+    const jobDocRef = db.collection("jobs").doc(jobId);
+    const cancelledById = cancelledBy === 'store' ? currentUser.uid : dealerId;
+    const userToPenalizeRef = db.collection("users").doc(cancelledById);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const jobDoc = await transaction.get(jobDocRef);
+            if (!jobDoc.exists) {
+                throw "해당 공고를 찾을 수 없습니다.";
+            }
+
+            const jobData = jobDoc.data();
+            const newTimeSlots = jobData.timeSlots.map(slot => {
+                if (slot.time === time) {
+                    slot.selectedDealers = (slot.selectedDealers || []).filter(id => id !== dealerId);
+                    slot.status = 'open';
+                }
+                return slot;
+            });
+
+            transaction.update(jobDocRef, {
+                timeSlots: newTimeSlots,
+                status: 'open'
+            });
+
+            transaction.update(userToPenalizeRef, {
+                cancellationCount: firebase.firestore.FieldValue.increment(1)
+            });
+        });
+
+        alert('채용이 성공적으로 취소되었습니다.');
+        closeCancellationModal();
+    } catch (error) {
+        console.error("채용 취소 처리 중 오류: ", error);
+        alert("채용 취소에 실패했습니다. 다시 시도해주세요.");
+    }
+}
+// --- ✨ 채용 취소 관련 함수들 끝 ---
 
 // --- 기타 유틸리티 함수 ---
 function populateAreaSelects(residenceSelectEl, preferenceSelectEl) {
