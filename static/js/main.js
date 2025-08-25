@@ -1,3 +1,5 @@
+// main.js
+
 // --- 전역 변수 및 상태 관리 ---
 let currentUser = { uid: null };
 let currentRole = null;
@@ -442,7 +444,7 @@ function renderAllViews() {
 function renderMyJobs() {
     const myJobs = [...allJobsData.values()]
         .filter(job => job.storeId === currentUser.uid)
-        .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     myJobsList.innerHTML = myJobs.length === 0 ? '<p class="text-gray-500">아직 등록한 공고가 없습니다.</p>' : '';
     myJobs.forEach(jobData => {
@@ -471,61 +473,115 @@ function renderMyJobs() {
 }
 
 function renderJobDetails(container, jobData) {
-     const timeSlotsHtml = (jobData.timeSlots || []).map(slot => {
-        const applicantsForSlot = (jobData.applicants || []).filter(app => app.time === slot.time);
-        const applicantsHtml = applicantsForSlot.map(app => {
-            const isSelected = (slot.selectedDealers || []).includes(app.dealerId);
-            let actionHtml = '';
-            if (isSelected) {
-                 actionHtml = `<span class="text-sm font-bold text-green-600">선택됨</span>`;
-            } else if (slot.status === 'open') {
-                const hasBeenSelectedInAnotherSlot = (jobData.timeSlots || []).some(s => (s.selectedDealers || []).includes(app.dealerId));
-                if (hasBeenSelectedInAnotherSlot) {
-                    actionHtml = `<button class="bg-gray-400 text-white px-3 py-1 text-sm rounded-md cursor-not-allowed" disabled>선택불가</button>`;
-                } else {
-                    actionHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${app.time}" class="select-dealer-btn bg-green-500 text-white px-3 py-1 text-sm rounded-md hover:bg-green-600 btn">선택</button>`;
-                }
-            }
-            return `
-            <div class="flex justify-between items-center p-2 bg-white rounded-md mt-1 border">
-                <div>
-                    <button class="text-sm font-medium text-blue-600 hover:underline view-profile-btn" data-user-id="${app.dealerId}">${app.dealerId}</button>
-                    <p class="text-xs text-gray-500">${app.appliedAt.toDate().toLocaleString('ko-KR')}</p>
-                </div>
-                ${actionHtml}
-            </div>`;
-        }).join('') || '<p class="text-xs text-gray-500 mt-1">지원자 없음</p>';
-        return `
-            <div class="mt-2 pt-2 border-t">
-                <h5 class="font-bold">${slot.time} (${(slot.selectedDealers || []).length}/${slot.personnel}명 모집) ${slot.status === 'closed' ? '<span class="text-red-500">(마감)</span>': ''}</h5>
-                ${applicantsHtml}
-            </div>
-        `;
-    }).join('');
-    container.innerHTML = `<div class="mt-4"><h4 class="font-semibold text-md">시간대별 지원자 목록</h4>${timeSlotsHtml}</div>`;
+    const sortedTimeSlots = [...(jobData.timeSlots || [])].sort((a, b) => a.time.localeCompare(b.time));
+
+    const timeSlotsHtml = sortedTimeSlots.map(slot => {
+       const applicantsForSlot = (jobData.applicants || []).filter(app => app.time === slot.time);
+       const applicantsHtml = applicantsForSlot.map(app => {
+           const isSelected = (slot.selectedDealers || []).includes(app.dealerId);
+           let actionHtml = '';
+           if (isSelected) {
+                actionHtml = `<span class="text-sm font-bold text-green-600">선택됨</span>`;
+           } else if (slot.status === 'open') {
+               const hasBeenSelectedInAnotherSlot = (jobData.timeSlots || []).some(s => (s.selectedDealers || []).includes(app.dealerId));
+               if (hasBeenSelectedInAnotherSlot) {
+                   actionHtml = `<button class="bg-gray-400 text-white px-3 py-1 text-sm rounded-md cursor-not-allowed" disabled>선택불가</button>`;
+               } else {
+                   actionHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${app.time}" class="select-dealer-btn bg-green-500 text-white px-3 py-1 text-sm rounded-md hover:bg-green-600 btn">선택</button>`;
+               }
+           }
+           return `
+           <div class="flex justify-between items-center p-2 bg-white rounded-md mt-1 border">
+               <div>
+                   <button class="text-sm font-medium text-blue-600 hover:underline view-profile-btn" data-user-id="${app.dealerId}">${app.dealerId}</button>
+                   <p class="text-xs text-gray-500">${app.appliedAt.toDate().toLocaleString('ko-KR')}</p>
+               </div>
+               ${actionHtml}
+           </div>`;
+       }).join('') || '<p class="text-xs text-gray-500 mt-1">지원자 없음</p>';
+       return `
+           <div class="mt-2 pt-2 border-t">
+               <h5 class="font-bold">${slot.time} (${(slot.selectedDealers || []).length}/${slot.personnel}명 모집) ${slot.status === 'closed' ? '<span class="text-red-500">(마감)</span>': ''}</h5>
+               ${applicantsHtml}
+           </div>
+       `;
+   }).join('');
+
+   const taxText = jobData.tax === '3.3' ? '3.3%' : '없음';
+   const transportText = jobData.transportFee > 0 ? `${jobData.transportFee}만원` : '없음';
+
+   container.innerHTML = `
+        <div class="text-sm text-gray-700">
+            <p><strong>주소:</strong> ${jobData.address || '정보 없음'}</p>
+            <p><strong>시급:</strong> ${jobData.wage ? parseInt(jobData.wage).toLocaleString() : '정보 없음'}원</p>
+            <p><strong>세금:</strong> ${taxText}</p>
+            <p><strong>보장 시간:</strong> ${jobData.guaranteedHours || '정보 없음'}시간</p>
+            <p><strong>식사 지원:</strong> ${jobData.mealSupport || '없음'}</p>
+            <p><strong>교통비:</strong> ${transportText}</p>
+            <p><strong>복장:</strong> 상의(${jobData.dressCodeTop || '상관없음'}), 하의(${jobData.dressCodeBottom || '상관없음'})</p>
+            <p><strong>기타:</strong> ${jobData.notes || '없음'}</p>
+        </div>
+        <div class="mt-4"><h4 class="font-semibold text-md">시간대별 지원자 목록</h4>${timeSlotsHtml}</div>`;
 }
 
 function renderAllJobs() {
+    const openCardIds = new Set();
+    allJobsList.querySelectorAll('.job-card').forEach(card => {
+        if (!card.querySelector('.job-details')?.classList.contains('hidden')) {
+            openCardIds.add(card.dataset.jobId);
+        }
+    });
+
     const filteredJobs = [...allJobsData.values()].filter(job => {
         if (dealerJobFilter === 'open') return job.status === 'open';
         if (dealerJobFilter === 'closed') return job.status === 'closed';
         return true;
-    }).sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
     allJobsList.innerHTML = filteredJobs.length === 0 ? `<p class="text-gray-500 col-span-full text-center">해당하는 공고가 없습니다.</p>` : '';
+    
     filteredJobs.forEach(jobData => {
         const jobElement = document.createElement('div');
         jobElement.className = 'bg-white p-4 rounded-lg shadow-md job-card flex flex-col';
+        jobElement.dataset.jobId = jobData.id;
+        
         const date = new Date(jobData.date);
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const dayOfWeek = days[date.getUTCDay()];
         const formattedDate = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. (${dayOfWeek})`;
+
         const statusClass = jobData.status === 'open' ? 'status-open' : 'status-closed';
         const statusText = jobData.status === 'open' ? '모집중' : '마감';
+
         const timeSlotsWithButtonsHtml = (jobData.timeSlots || []).map(slot => {
             let buttonHtml = '';
+            
             if (slot.status === 'closed') {
                 if ((slot.selectedDealers || []).includes(currentUser.uid)) {
-                     buttonHtml = `<span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">근무확정</span>`;
+                    // --- ✨ 수정된 부분 시작 ---
+                    let reviewButtonHtml = '';
+                    const hasReviewed = (userProfile.completedReviews || []).some(
+                        review => review.jobId === jobData.id && review.time === slot.time
+                    );
+
+                    if (hasReviewed) {
+                        reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" disabled>리뷰완료</button>`;
+                    } else {
+                        const workDateTime = new Date(`${jobData.date}T${slot.time}`);
+                        const now = new Date();
+                        const hoursSinceWork = (now - workDateTime) / (1000 * 60 * 60);
+
+                        if (hoursSinceWork >= 24 && hoursSinceWork <= 48) {
+                            reviewButtonHtml = `<button data-job-id="${jobData.id}" data-store-id="${jobData.storeId}" data-time="${slot.time}" class="write-review-btn ml-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded hover:bg-purple-700 btn">리뷰쓰기</button>`;
+                        } else if (hoursSinceWork < 24) {
+                            const hoursLeft = (24 - hoursSinceWork).toFixed(0);
+                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="근무 종료 24시간 후부터 작성 가능합니다. (${hoursLeft}시간 남음)" disabled>리뷰쓰기</button>`;
+                        } else {
+                            reviewButtonHtml = `<button class="ml-2 bg-gray-400 text-white text-xs font-bold px-2 py-1 rounded cursor-not-allowed" title="리뷰 작성 기간이 지났습니다." disabled>리뷰쓰기</button>`;
+                        }
+                    }
+                    buttonHtml = `<span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">근무확정</span>${reviewButtonHtml}`;
+                    // --- ✨ 수정된 부분 끝 ---
                 } else {
                      buttonHtml = `<button class="bg-gray-500 text-white text-sm py-1 px-3 rounded-md cursor-not-allowed" disabled>마감</button>`;
                 }
@@ -540,13 +596,22 @@ function renderAllJobs() {
                     buttonHtml = `<button data-job-id="${jobData.id}" data-time="${slot.time}" class="apply-btn bg-blue-600 text-white text-sm py-1 px-3 rounded-md hover:bg-blue-700 btn">지원하기</button>`;
                 }
             }
+
+            const applicantsForSlot = (jobData.applicants || []).filter(app => app.time === slot.time);
+            const applicantCount = applicantsForSlot.length;
+            const applicantCountText = `<span class="text-sm text-gray-600 w-20 text-right">(${applicantCount}명 지원)</span>`;
+
             return `
                 <div class="flex justify-between items-center py-2 border-t">
                     <span class="font-semibold">${slot.time} / ${slot.personnel}명</span>
-                    ${buttonHtml}
+                    <div class="flex items-center space-x-2">
+                         ${buttonHtml}
+                         ${applicantCountText}
+                    </div>
                 </div>
             `;
         }).join('');
+
         const detailsHtml = `
             <div class="job-details mt-4 hidden">
                 <div class="flex-grow">
@@ -560,6 +625,7 @@ function renderAllJobs() {
                 </div>
             </div>
         `;
+
         const headerHtml = `
             <div class="flex justify-between items-center cursor-pointer toggle-details-btn">
                 <div>
@@ -572,11 +638,17 @@ function renderAllJobs() {
                 </div>
             </div>
         `;
+
         jobElement.innerHTML = headerHtml + detailsHtml;
         allJobsList.appendChild(jobElement);
     });
-}
 
+    allJobsList.querySelectorAll('.job-card').forEach(card => {
+        if (openCardIds.has(card.dataset.jobId)) {
+            card.querySelector('.job-details').classList.remove('hidden');
+        }
+    });
+}
 
 // --- 이벤트 핸들러 ---
 createJobForm.addEventListener('submit', (e) => {
@@ -621,6 +693,10 @@ createJobForm.addEventListener('submit', (e) => {
 });
 
 allJobsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('view-profile-btn')) {
+        const userId = e.target.dataset.userId;
+        showUserProfileModal(userId);
+    }
     if (e.target.classList.contains('apply-btn')) {
         const { jobId, time } = e.target.dataset;
         const jobDocRef = db.collection("jobs").doc(jobId);
@@ -638,6 +714,12 @@ allJobsList.addEventListener('click', async (e) => {
             console.error("지원 처리 중 오류:", error);
         }
     }
+    // --- ✨ 추가된 부분 ---
+    if (e.target.classList.contains('write-review-btn')) {
+        const { jobId, storeId, time } = e.target.dataset;
+        openReviewModal('dealer', { jobId, storeId, time });
+    }
+    // --- ✨ 추가된 부분 끝 ---
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
         card.querySelector('.job-details').classList.toggle('hidden');
@@ -645,6 +727,12 @@ allJobsList.addEventListener('click', async (e) => {
 });
 
 myJobsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('view-profile-btn')) {
+        const userId = e.target.dataset.userId;
+        showUserProfileModal(userId);
+        return;
+    }
+
     if (e.target.classList.contains('select-dealer-btn')) {
         const { jobId, dealerId, time } = e.target.dataset;
         if (!confirm(`${time} 시간대에 ${dealerId} 님을 선택하시겠습니까?`)) return;
