@@ -177,6 +177,33 @@ function showApp(role) {
     });
 }
 
+function maskPhoneNumber(phone) {
+    if (typeof phone !== 'string' || phone.length < 9) return phone;
+    const parts = phone.replace(/-/g, '').match(/(\d{3})(\d{3,4})(\d{4})/);
+    if (!parts) return phone;
+    return `${parts[1]}-****-${parts[3]}`;
+}
+
+function maskEmail(email) {
+    if (typeof email !== 'string' || !email.includes('@')) return email;
+    const [localPart, domain] = email.split('@');
+    if (localPart.length <= 3) return email;
+    return `${localPart.substring(0, 3)}***@${domain}`;
+}
+
+function renderStars(score) {
+    const fullStars = Math.floor(score);
+    const emptyStars = 5 - fullStars;
+    let starsHtml = '';
+    for (let i = 0; i < fullStars; i++) {
+        starsHtml += `<span class="text-yellow-400">&#9733;</span>`;
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        starsHtml += `<span class="text-gray-300">&#9733;</span>`;
+    }
+    return starsHtml;
+}
+
 // --- 프로필 모달 로직 ---
 profileBtn.addEventListener('click', () => {
     showUserProfileModal(currentUser.uid);
