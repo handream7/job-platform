@@ -541,22 +541,20 @@ function renderJobDetails(container, jobData) {
 
            if (isSelected) {
                 // --- ✨ 수정된 부분 시작 ---
+
+                // 리뷰 버튼 로직 (기존과 동일)
                 let reviewButtonHtml = '';
-                // 매장이 해당 딜러에 대해 이 시간대에 리뷰를 이미 작성했는지 확인
                 const hasReviewed = (userProfile.completedReviews || []).some(
                     review => review.jobId === jobData.id && review.time === slot.time && review.reviewedUser === app.dealerId
                 );
-
                 if (hasReviewed) {
                     reviewButtonHtml = `<button class="bg-gray-400 text-white px-2 py-1 text-xs rounded-md cursor-not-allowed" disabled>리뷰완료</button>`;
                 } else {
-                    const workDateTime = new Date(`${jobData.date}T${slot.time}`);
-                    const now = new Date();
-                    const hoursSinceWork = (now - workDateTime) / (1000 * 60 * 60);
-                    
+                    const workDateTimeForReview = new Date(`${jobData.date}T${slot.time}`);
+                    const nowForReview = new Date();
+                    const hoursSinceWork = (nowForReview - workDateTimeForReview) / (1000 * 60 * 60);
                     const reviewPeriodStartHours = 12;
-                    const reviewPeriodEndHours = 168; // 7일
-
+                    const reviewPeriodEndHours = 168;
                     if (hoursSinceWork >= reviewPeriodStartHours && hoursSinceWork <= reviewPeriodEndHours) {
                         reviewButtonHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="write-dealer-review-btn bg-purple-600 text-white px-2 py-1 text-xs rounded-md hover:bg-purple-700 btn">리뷰쓰기</button>`;
                     } else if (hoursSinceWork < reviewPeriodStartHours) {
@@ -567,10 +565,23 @@ function renderJobDetails(container, jobData) {
                     }
                 }
 
+                // 취소 버튼 로직 (시간 확인 기능 추가)
+                let cancellationButtonHtml = '';
+                const workDateTime = new Date(`${jobData.date}T${slot.time}`);
+                const now = new Date();
+
+                if (now > workDateTime) {
+                    // 현재 시간이 근무 시간을 지났으면 '취소불가' 버튼 표시
+                    cancellationButtonHtml = `<button class="bg-gray-400 text-white px-2 py-1 text-xs rounded-md cursor-not-allowed" disabled>취소불가</button>`;
+                } else {
+                    // 근무 시간 전이면 활성화된 '취소' 버튼 표시
+                    cancellationButtonHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="cancel-selection-btn bg-red-500 text-white px-2 py-1 text-xs rounded-md hover:bg-red-600 btn">취소</button>`;
+                }
+
                 actionHtml = `
                     <div class="flex items-center space-x-2">
                         <span class="text-sm font-bold text-green-600">선택됨</span>
-                        <button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="cancel-selection-btn bg-red-500 text-white px-2 py-1 text-xs rounded-md hover:bg-red-600 btn">취소</button>
+                        ${cancellationButtonHtml}
                         ${reviewButtonHtml}
                     </div>
                 `;
