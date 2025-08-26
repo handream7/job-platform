@@ -473,13 +473,26 @@ function renderAllViews() {
 }
 
 function renderMyJobs() {
+    // 1. 화면을 다시 그리기 전, 현재 열려있는 공고 카드의 ID를 기억합니다.
+    const openCardIds = new Set();
+    myJobsList.querySelectorAll('.job-card').forEach(card => {
+        const details = card.querySelector('.job-details');
+        if (details && !details.classList.contains('hidden')) {
+            const jobId = card.querySelector('.toggle-details-btn')?.dataset.jobId;
+            if (jobId) openCardIds.add(jobId);
+        }
+    });
+
+    // 기존 공고 목록 필터링 및 정렬
     const myJobs = [...allJobsData.values()]
         .filter(job => job.storeId === currentUser.uid)
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
+    // 기존 공고 목록 초기화 및 새로 그리기
     myJobsList.innerHTML = myJobs.length === 0 ? '<p class="text-gray-500">아직 등록한 공고가 없습니다.</p>' : '';
     myJobs.forEach(jobData => {
         const jobCard = document.createElement('div');
+        // ✨ card 자체에 'collapsed' 클래스를 적용하여 화살표 방향을 제어합니다.
         jobCard.className = 'border p-4 rounded-lg bg-gray-50 job-card';
         
         const date = jobData.date ? new Date(jobData.date) : new Date();
@@ -501,6 +514,20 @@ function renderMyJobs() {
         jobCard.innerHTML = contentHtml;
         myJobsList.appendChild(jobCard);
     });
+
+    // 3. 목록을 모두 그린 후, 이전에 열려있던 카드를 다시 열어줍니다.
+    myJobsList.querySelectorAll('.job-card').forEach(card => {
+        const jobId = card.querySelector('.toggle-details-btn')?.dataset.jobId;
+        if (jobId && openCardIds.has(jobId)) {
+            const details = card.querySelector('.job-details');
+            const jobData = allJobsData.get(jobId);
+            if (details && jobData) {
+                renderJobDetails(details, jobData); // 상세 내용을 다시 렌더링
+                details.classList.remove('hidden');  // 상세 내용을 보이게 함
+                card.classList.add('collapsed');     // 화살표 방향 아이콘 회전
+            }
+        }
+    });
 }
 
 function renderJobDetails(container, jobData) {
@@ -511,14 +538,43 @@ function renderJobDetails(container, jobData) {
        const applicantsHtml = applicantsForSlot.map(app => {
            const isSelected = (slot.selectedDealers || []).includes(app.dealerId);
            let actionHtml = '';
+
            if (isSelected) {
-                // ✨ 수정된 부분: 선택됨 옆에 취소 버튼 추가
+                // --- ✨ 수정된 부분 시작 ---
+                let reviewButtonHtml = '';
+                // 매장이 해당 딜러에 대해 이 시간대에 리뷰를 이미 작성했는지 확인
+                const hasReviewed = (userProfile.completedReviews || []).some(
+                    review => review.jobId === jobData.id && review.time === slot.time && review.reviewedUser === app.dealerId
+                );
+
+                if (hasReviewed) {
+                    reviewButtonHtml = `<button class="bg-gray-400 text-white px-2 py-1 text-xs rounded-md cursor-not-allowed" disabled>리뷰완료</button>`;
+                } else {
+                    const workDateTime = new Date(`${jobData.date}T${slot.time}`);
+                    const now = new Date();
+                    const hoursSinceWork = (now - workDateTime) / (1000 * 60 * 60);
+                    
+                    const reviewPeriodStartHours = 12;
+                    const reviewPeriodEndHours = 168; // 7일
+
+                    if (hoursSinceWork >= reviewPeriodStartHours && hoursSinceWork <= reviewPeriodEndHours) {
+                        reviewButtonHtml = `<button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="write-dealer-review-btn bg-purple-600 text-white px-2 py-1 text-xs rounded-md hover:bg-purple-700 btn">리뷰쓰기</button>`;
+                    } else if (hoursSinceWork < reviewPeriodStartHours) {
+                        const hoursLeft = (reviewPeriodStartHours - hoursSinceWork).toFixed(0);
+                        reviewButtonHtml = `<button class="bg-gray-400 text-white px-2 py-1 text-xs rounded-md cursor-not-allowed" title="근무 종료 12시간 후부터 작성 가능합니다. (${hoursLeft}시간 남음)" disabled>리뷰쓰기</button>`;
+                    } else {
+                        reviewButtonHtml = `<button class="bg-gray-400 text-white px-2 py-1 text-xs rounded-md cursor-not-allowed" title="리뷰 작성 기간(7일)이 지났습니다." disabled>기간만료</button>`;
+                    }
+                }
+
                 actionHtml = `
                     <div class="flex items-center space-x-2">
                         <span class="text-sm font-bold text-green-600">선택됨</span>
                         <button data-job-id="${jobData.id}" data-dealer-id="${app.dealerId}" data-time="${slot.time}" class="cancel-selection-btn bg-red-500 text-white px-2 py-1 text-xs rounded-md hover:bg-red-600 btn">취소</button>
+                        ${reviewButtonHtml}
                     </div>
                 `;
+                // --- ✨ 수정된 부분 끝 ---
            } else if (slot.status === 'open') {
                const hasBeenSelectedInAnotherSlot = (jobData.timeSlots || []).some(s => (s.selectedDealers || []).includes(app.dealerId));
                if (hasBeenSelectedInAnotherSlot) {
@@ -813,6 +869,11 @@ myJobsList.addEventListener('click', async (e) => {
         const { jobId, dealerId, time } = e.target.dataset;
         openCancellationModal({ jobId, dealerId, time });
     }
+    if (e.target.classList.contains('write-dealer-review-btn')) {
+        const { jobId, dealerId, time } = e.target.dataset;
+        // 'store'가 'dealer'를 리뷰하는 모달을 엽니다.
+        openReviewModal('store', { jobId, dealerId, time });
+    }
 
     if (e.target.closest('.toggle-details-btn')) {
         const card = e.target.closest('.job-card');
@@ -912,8 +973,11 @@ reviewForm.addEventListener('submit', async (e) => {
     let reviewData;
     let targetUserId;
     let reviewerUpdateData = {};
-    if (currentReviewInfo.reviewerRole === 'dealer') {
-        targetUserId = currentReviewInfo.storeId;
+    let isDealerReviewing = currentReviewInfo.reviewerRole === 'dealer';
+
+    // 1. 리뷰 데이터와 리뷰어의 업데이트 데이터 준비 (근무 이력 추가는 여기서 제외)
+    if (isDealerReviewing) {
+        targetUserId = currentReviewInfo.storeId; // 리뷰 대상: 매장
         reviewData = {
             dealerId: currentUser.uid,
             ratings: {
@@ -924,20 +988,14 @@ reviewForm.addEventListener('submit', async (e) => {
             notes: document.getElementById('review-notes').value,
             createdAt: firebase.firestore.Timestamp.now()
         };
-        const jobData = allJobsData.get(currentReviewInfo.jobId);
         reviewerUpdateData = {
-            workHistory: firebase.firestore.FieldValue.arrayUnion({
-                date: jobData.date,
-                storeName: currentReviewInfo.storeId,
-                time: currentReviewInfo.time
-            }),
             completedReviews: firebase.firestore.FieldValue.arrayUnion({
                 jobId: currentReviewInfo.jobId, 
                 time: currentReviewInfo.time
             })
         };
-    } else { // store
-        targetUserId = currentReviewInfo.dealerId;
+    } else { // 매장이 리뷰할 때
+        targetUserId = currentReviewInfo.dealerId; // 리뷰 대상: 딜러
         reviewData = {
             storeId: currentUser.uid,
             ratings: {
@@ -955,19 +1013,61 @@ reviewForm.addEventListener('submit', async (e) => {
             })
         };
     }
+
     try {
-        await db.collection("users").doc(targetUserId).update({
+        const reviewerDocRef = db.collection("users").doc(currentUser.uid);
+        const targetUserDocRef = db.collection("users").doc(targetUserId);
+
+        // 2. 리뷰 저장 및 리뷰어의 '리뷰완료' 상태 업데이트
+        await targetUserDocRef.update({
             reviews: firebase.firestore.FieldValue.arrayUnion(reviewData)
         });
-        const reviewerDocRef = db.collection("users").doc(currentUser.uid);
         await reviewerDocRef.update(reviewerUpdateData);
+
+        // 3. ✨ 양측 모두 리뷰를 완료했는지 확인
+        const targetUserSnap = await targetUserDocRef.get();
+        const targetUserProfile = targetUserSnap.data();
+        const otherPartyHasReviewed = (targetUserProfile.completedReviews || []).some(review => {
+            if (isDealerReviewing) { // 내가 딜러 -> 상대방(매장)이 나에 대한 리뷰를 썼는지 확인
+                return review.jobId === currentReviewInfo.jobId &&
+                       review.time === currentReviewInfo.time &&
+                       review.reviewedUser === currentUser.uid;
+            } else { // 내가 매장 -> 상대방(딜러)이 나에 대한 리뷰를 썼는지 확인
+                return review.jobId === currentReviewInfo.jobId &&
+                       review.time === currentReviewInfo.time;
+            }
+        });
+
+        // 4. ✨ 양측 모두 리뷰를 완료했다면, 딜러의 근무 이력에 추가
+        if (otherPartyHasReviewed) {
+            const dealerId = isDealerReviewing ? currentUser.uid : currentReviewInfo.dealerId;
+            const storeId = isDealerReviewing ? currentReviewInfo.storeId : currentUser.uid;
+            const jobData = allJobsData.get(currentReviewInfo.jobId);
+            
+            const workHistoryData = {
+                date: jobData.date,
+                storeName: storeId,
+                time: currentReviewInfo.time
+            };
+
+            const dealerDocRef = db.collection("users").doc(dealerId);
+            await dealerDocRef.update({
+                workHistory: firebase.firestore.FieldValue.arrayUnion(workHistoryData)
+            });
+            console.log(`${dealerId}의 근무 이력이 추가되었습니다.`);
+        }
+
+        // 5. 로컬 프로필 데이터 갱신 및 UI 업데이트
         const updatedProfileSnap = await reviewerDocRef.get();
         if(updatedProfileSnap.exists) { userProfile = updatedProfileSnap.data(); }
+        
         alert('리뷰가 성공적으로 제출되었습니다!');
         reviewForm.reset();
         reviewModalView.classList.add('hidden');
+        renderAllViews(); 
+
     } catch (error) {
-        console.error("리뷰 제출 오류: ", error);
+        console.error("리뷰 제출 및 근무 이력 처리 오류: ", error);
         alert("리뷰 제출에 실패했습니다.");
     }
 });
